@@ -30,8 +30,8 @@
 	# assume that x and y have been obtained using functions from dataLagging.R
 
 	#if one value of lambda is given, use it for all genes
-	if(length(lambdas)==1){
-		lambdas <- rep(lambdas, ncol(y))
+	if(length(lambda)==1){
+		lambda <- rep(lambda, ncol(y))
 	}
 
 	if(!self){

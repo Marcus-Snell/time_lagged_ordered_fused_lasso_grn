@@ -1,0 +1,21 @@
+ 
+=========================================================================
+The In-Silico-Network Challenges: Description
+=========================================================================
+
+Three in-silico networks were created and endowed with a dynamics that simulate biological interactions. The challenge consists of predicting the connectivity and some of the properties of one or more of these three networks.
+
+File(s):
+
+  - InSilico1-heterozygous.xls
+  - InSilico1-null-mutants.xls
+  - InSilico1-trajectories.xls
+  - InSilico2-heterozygous.xls
+  - InSilico2-null-mutants.xls
+  - InSilico2-trajectories.xls
+  - InSilico3-heterozygous.xls
+  - InSilico3-null-mutants.xls
+  - InSilico3-trajectories.xls
+
+
+[ http://wiki.c2b2.columbia.edu/dream/index.php/The_In-Silico-Network_Challenges._Description ]

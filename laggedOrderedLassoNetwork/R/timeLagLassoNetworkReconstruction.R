@@ -196,30 +196,35 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
 
 	p <- ncol(exprDataList[[1]])
 
-	#checking inputs:
-
+	#checking inputs: 
+  
+	#validate number of columns in each dataset is the same
 	if(any(sapply(exprDataList, ncol) != p)){
 		stop('exprDataList: must have the same number of genes in each dataset')
 	} else if(length(unique(lapply(exprDataList, function(ii){sort(colnames(ii))}))) > 1){
 		stop('exprDataList: must have the same genes in each dataset')
 	}
 
+	# only two types of output accepted, the original gene expression, or the change in expression from the lagged data.
 	if(output != 'expr.' && output != 'change expr.'){
 		warning("output: must be 'expr.' or 'change expr.'; using 'expr.'", call. = FALSE)
 		output <- 'expr.'
 	}
-
+  
+	# check underlying lasso optimization method (generalilzed gradient or quadratic programming?)
 	if(method != 'Solve.QP' && method != 'GG'){
 		warning("method: must be 'Solve.QP' or 'GG'; using 'Solve.QP")
 		method <- 'Solve.QP'
 	}
-
+  
+	# coefficient penalty check, single value applys same penalty regardless of time, vector applies different penalty for different lags/coefficients
 	if(!is.numeric(lambda) && !is.integer(lambda)){
 		stop('lambda: must be of class numeric or integer')
 	} else if(length(lambda) != 1 && !all(dim(lambda) == c(p, p))){
 		stop('lambda: must be a scalar or p x p matrix')
 	}
-
+  
+	# max lag check, must be an integer
 	if(!is.numeric(maxLag) || maxLag < 1){
 		stop('maxLag: must be a scalar greater than or equal to 1')
 	} else if(floor(maxLag) < maxLag){
@@ -227,32 +232,38 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
 		maxLag <- floor(maxLag)
 	}
 
+	# lasso type check, strongly ordered means we think the effects of the coefficients should degrade as time progresses
 	if(!is.logical(strongly.ordered)){
 		warning('strongly.ordered: must be a logical; using FALSE')
 		strongly.ordered <- FALSE
 	}
 
+	# check if rescale should be done on means and sd of all datasets included
 	if(!is.logical(rescale)){
 		warning('rescale: must be a logical; using TRUE')
 		rescale <- TRUE
 
 	}
 
+	# check if rescale should be done on means and sd of datasets individually
 	if(!is.logical(rescaleSeparately)){
 		warning('rescaleSeparately: must be a logical; using FALSE')
 		rescaleSeparately <- FALSE
 	}
 
+	# check the max number of iterations is for convergence is numeric, prevents lasso from running indefinitely
 	if(!is.numeric(maxiter) && !is.integer(maxiter)){
 		warning('maxiter: must be a scalar; using 500')
 		maxiter <- 500
 	}
-
+  
+	# same as above except this is limiting the number of iteration for each substep
 	if(!is.numeric(inneriter) && !is.integer(inneriter)){
 		warning('inneriter: must be a scalar; using 100')
 		inneriter <- 100
 	}
-
+  
+	# same as above except controls iterations for when method is generalized gradient (gg)
 	if(!is.numeric(iter.gg) && !is.integer(iter.gg)){
 		warning('iter.gg: must be a scalar; using 100')
 		iter.gg <- 100
@@ -260,7 +271,7 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
 	##########################
 	##########################
 
-	#preprocess expr. data
+	#preprocess expr. data, uses dataLagging.R to scale data appropriately
 	if(rescale){
 		if(rescaleSeparately){
 			rescaledList <- .rescaleDataSeparate(exprDataList)
@@ -269,23 +280,24 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
 		}
 	}
 
-	#lag expr. data
+	#lag expr. data, uses dataLagging.R to create lagged expression data and the output expression data at time t + 1
 	if(output == 'expr.'){
 		transformedList <- .transformListMultiLag(rescaledList, maxLag)
 	} else if(output == 'change expr.'){
 		transformedList <- .transformListMultiLagChange(rescaledList, maxLag)
 	}
 
-	xData <- transformedList$xData
-	yData <- transformedList$yData
-	rm(rescaledList, transformedList)
+	xData <- transformedList$xData # lagged expression data
+	yData <- transformedList$yData # output expression data at time t + 1
+	rm(rescaledList, transformedList) # memory cleanup once xData and yData have been created
 
+	# creates a p x p matrix to be used as penalization parameter if lambda is a scaler
 	if(length(lambda)==1){
 		lambda <- matrix(lambda, p, p)
 	}
 
 	##########
-
++
 	#compute coefficients
 	coefficientsByLag <- .timeLagLassoNetworkLaggedData(xData, yData, maxLag, lambda,
 		self=self, method=method, strongly.ordered=strongly.ordered,

@@ -1,0 +1,4 @@
+"ID","name","versionNumber","contentType","dataFileSizeBytes","createdBy","createdOn","modifiedBy","modifiedOn","parentId","synapseURL","dataFileMD5Hex"
+"syn3049732","DREAM4_InSilico_Size10.zip","1","application/x-zip","37828","375805","1420642939541","375805","1420642939541","syn3049715","https://www.synapse.org/#!Synapse:syn3049732.1","49206cf0c79dc9bd819b0066cb70dbe9"
+"syn3049734","DREAM4_InSilico_Size100_Multifactorial.zip","1","application/x-zip","216787","375805","1420642952018","375805","1420642952018","syn3049715","https://www.synapse.org/#!Synapse:syn3049734.1","b60b295a036226c734b5796bc8151c89"
+"syn3049733","DREAM4_InSilico_Size100.zip","1","application/x-zip","890813","375805","1420642946133","375805","1420642946133","syn3049715","https://www.synapse.org/#!Synapse:syn3049733.1","3a3529ce68249238e8e928d03ab1a50b"

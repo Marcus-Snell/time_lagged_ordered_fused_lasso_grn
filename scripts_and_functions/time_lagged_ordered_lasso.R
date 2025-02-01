@@ -1,7 +1,7 @@
-source("dataPreprocessing.R")
-source("dataLagging.R")
-source("orderedLassoFunctions.R")
-source("timeLagLassoNetworkReconstruction.R")
+source("./scripts_and_functions/dataPreprocessing.R")
+source("./scripts_and_functions/dataLagging.R")
+source("./scripts_and_functions/orderedLassoFunctions.R")
+source("./scripts_and_functions/timeLagLassoNetworkReconstruction.R")
 
 library(readxl)
 library(quadprog)
@@ -12,7 +12,7 @@ library(ggraph)
 
 
 # Import gene expression data
-files <- list.files(path = "C:/Users/Marcu/Documents/Data_Science/Spring 2025/Capstone II/laggedOrderedLassoNetwork/Data/dream2/Network1", pattern = "*.xls", full.names = TRUE)
+files <- list.files(path = "./data/dream2/Network1", pattern = "*.xls", full.names = TRUE)
 dataset_list <- lapply(files, read_xls)
 
 dataset_list <- lapply(dataset_list, function(df) {

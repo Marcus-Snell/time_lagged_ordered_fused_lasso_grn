@@ -7,11 +7,14 @@ library(readxl)
 library(quadprog)
 library(igraph)
 library(ggraph)
+library(dplyr)
+library(readr)
 
 # Processing Data Files ---------------------------------------------------
 
 
-# Import gene expression data
+# Import gene expression data (this is the ground truth expression data).  This is used for the adj matrix
+# that is passed to the semisupervised model (null-mutants and heterozygous data).
 files <- list.files(path = "./data/dream2/Network1", pattern = "*.xls", full.names = TRUE)
 dataset_list <- lapply(files, read_xls)
 
@@ -20,35 +23,49 @@ dataset_list <- lapply(dataset_list, function(df) {
   return(df)
 })
 
-# Import trajectory data
-adj_matrix <- read_xls("C:\\Users\\Marcu\\Documents\\Data_Science\\Spring 2025\\Capstone II\\laggedOrderedLassoNetwork\\Data\\dream2\\InSilico1-trajectories.xls")
+# Import trajectory data (time series data), this is what we will pass to timeLaggedOrderedLassoNetwork()
+# Two seperate gene networks to work with here
+ts_data_50_genes <- read_xls("./data/dream2/Network1/Time_series/InSilico1-trajectories.xls")
 
+ts_data_50_genes <- ts_data_50_genes %>%
+  mutate(group = cumsum(is.na(Time))) %>%  # Create a group ID based on NA separators
+  filter(!is.na(Time))  # Remove NA rows
+
+# Split the dataset into a list of time-series matrices
+ts_data_list_50_genes <- ts_data_50_genes %>%
+  group_by(group) %>%
+  group_split() %>%
+  lapply(function(x) x %>% select(-Time, -group))  # Remove 'Time' & 'group' columns
+
+
+ts_data_10_genes <- read_tsv("./data/dream3/InSilicoSize10/Network1/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
+
+num_blocks <- length(unique(ts_data_10_genes$Time))  # Unique time points per experiment
+num_experiments <- nrow(ts_data_10_genes) / num_blocks  # Total datasets
+
+# Split the dataset into a list
+ts_data_list_10_genes <- split(ts_data_10_genes, rep(1:num_experiments, each=num_blocks))
+
+# Remove "Time" column from each matrix
+ts_data_list_10_genes <- lapply(ts_data_list_10_genes, function(x) x %>% select(-Time))
 
 # Execute Time Lag Lasso Network Reconstruction ---------------------------
 
 
-# the lines below work but where does the trajectories.xls data come in to play?
-time_lag_ord_lasso_net <- timeLaggedOrderedLassoNetwork(dataset_list)
-time_lag_ord_lasso_net_test <- timeLaggedOrderedLassoNetwork(dataset_list, output = "change expr.")
+# Creates predicted(inferred) GRN based on time series data of different gene expression levels
+time_lag_ord_lasso_net_50_genes <- timeLaggedOrderedLassoNetwork(ts_data_list_50_genes)
+time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_data_list_10_genes)
 
-
-# outputs matrix of 1s and 0s.  this represents connectivity between genes
-timeLaggedOrderedLassoSemiSupervisedNetwork(dataset_list, time_lag_ord_lasso_net)
+# Utilizes same time series data as well as previously know GRN info to output the predicted GRN
+#timeLaggedOrderedLassoSemiSupervisedNetwork(ts_data_list, adj_matrix)
 
 
 # Create Plots ------------------------------------------------------------
 
 
 # create directed graph plot
-testg <- graph_from_adjacency_matrix(time_lag_ord_lasso_net)
-plot(testg)
-
-#another package to experiment with for directed graph
-graph <- as_tbl_graph(time_lag_ord_lasso_net) |> 
-  mutate(Popularity = centrality_degree(mode = 'in'))
-
-ggraph(time_lag_ord_lasso_net, layout = 'fr') +
+ggraph(time_lag_ord_lasso_net_50_genes, layout = 'linear', circular = TRUE) +
   geom_edge_link() +
   geom_node_point(size = 9, color = "dodgerblue3") +
   theme_graph(background = 'white') + 
-  geom_node_text(label = colnames(time_lag_ord_lasso_net), color = "white", size = 3)
+  geom_node_text(label = colnames(time_lag_ord_lasso_net_50_genes), color = "white", size = 3)

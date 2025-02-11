@@ -156,11 +156,14 @@
   
   #threshold absolute value of the coefficients
   adjByLag <- lapply(coeffMatricesByLag[1:maxLag], function(ii){
-    abs(ii) > epsilon
+    (ii > epsilon) - (ii < -epsilon)
   })
   
   #aggregate lags for each gene-pair
-  adjPredicted <- Reduce('+', adjByLag) > 0
+  adjPredicted <- Reduce('+', adjByLag)
+  adjPredicted[adjPredicted > 1] <- 1    # Cap activations at 1
+  adjPredicted[adjPredicted < -1] <- -1  # Cap inhibitions at -1
+  
   diag(adjPredicted) <- 0
   
   adjPredicted

@@ -5,10 +5,11 @@ source("./scripts_and_functions/timeLagLassoNetworkReconstruction.R")
 
 library(readxl)
 library(quadprog)
-library(igraph)
-library(ggraph)
 library(dplyr)
 library(readr)
+library(ggplot2)
+library(ggraph)
+library(tidygraph)
 
 # Processing Data Files ---------------------------------------------------
 
@@ -64,8 +65,28 @@ time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_data_list_10
 
 
 # create directed graph plot
-ggraph(time_lag_ord_lasso_net_50_genes, layout = 'linear', circular = TRUE) +
-  geom_edge_link() +
+graph <- as_tbl_graph(time_lag_ord_lasso_net_10_genes, directed = TRUE) %>%
+  activate(edges) %>%
+  mutate(
+    interaction_type = ifelse(weight > 0, "activator", "inhibitor"),  # Identify activation/inhibition
+    edge_color = ifelse(weight > 0, "green", "tomato"),   # Green for activation, red for inhibition
+    edge_linetype = ifelse(weight > 0, "solid", "dotdash") # Solid for activation, dashed for inhibition
+  )
+
+# these lines aren't doing anything just yet.  Need to figure out how to add two geom_edge_link()
+activator_arrow <- arrow(length = unit(3, 'mm'), type = "closed")  # Standard arrow
+inhibitor_arrow <- arrow(length = unit(3, 'mm'), type = "open", ends = "last")
+
+# plot graph
+ggraph(graph, layout = 'linear', circular = TRUE) +
+  geom_edge_link(aes(color = edge_color, linetype = edge_linetype),
+                 arrow = arrow(length = unit(3, 'mm')),
+                 start_cap = circle(5, 'mm'),
+                 end_cap = circle(5, 'mm')
+                 ) +
   geom_node_point(size = 9, color = "dodgerblue3") +
-  theme_graph(background = 'white') + 
-  geom_node_text(label = colnames(time_lag_ord_lasso_net_50_genes), color = "white", size = 3)
+  theme_graph(background = 'white') +
+  geom_node_text(aes(label = name), color = "white", size = 3) + 
+  scale_edge_linetype_identity() +
+  scale_edge_color_identity() + 
+  ggtitle("Expression and Inhibtion for 10 Gene In Silico Network")

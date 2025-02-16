@@ -10,6 +10,7 @@ library(readr)
 library(ggplot2)
 library(ggraph)
 library(tidygraph)
+library(cowplot)
 
 # Processing Data Files ---------------------------------------------------
 
@@ -61,32 +62,88 @@ time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_data_list_10
 #timeLaggedOrderedLassoSemiSupervisedNetwork(ts_data_list, adj_matrix)
 
 
+# Slice Gene Expression Data and Create Smaller Dataframes ----------------------
+
+
+#' @title .matrix_slice_function
+#' @description Loop over data a create datsets with limited time points, start point moves the right(down) each pass
+#' @param data_list list of datasets (samples x variables)
+#' @param window_size number of time points to be included in each slice
+#' @return list of list of datasets with each sublist only containing window_size rows
+matrix_slice_function <- function(data_list, window_size) {
+  start <- 1
+  stop <- window_size
+  reduced_matrix_list = list()
+  
+  while (nrow(data_list[[1]]) - start >= window_size) {
+    temp_list <- list()
+    for (df in data_list) {
+      small_df <- df[start:stop, ]
+      temp_list <- append(temp_list, list(small_df))
+    }
+  
+  reduced_matrix_list <-  append(reduced_matrix_list, list(temp_list))
+  start <- start + 1
+  stop <- stop + 1
+  }
+  return(reduced_matrix_list)
+  
+}
+
+# creates list of adjacency matrices that can be plotted
+adj_matrix_list <- list()
+sliced_data_list <- matrix_slice_function(ts_data_list_10_genes, 10) # slice data
+
+# create adj matrices for each slice dataset list and add to adj_matrix_list
+for (list in sliced_data_list) {
+  temp_adj <- timeLaggedOrderedLassoNetwork(list)
+  adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
+  
+}
+
+
+
 # Create Plots ------------------------------------------------------------
 
 
 # create directed graph plot
-graph <- as_tbl_graph(time_lag_ord_lasso_net_10_genes, directed = TRUE) %>%
-  activate(edges) %>%
-  mutate(
-    interaction_type = ifelse(weight > 0, "activator", "inhibitor"),  # Identify activation/inhibition
-    edge_color = ifelse(weight > 0, "green", "tomato"),   # Green for activation, red for inhibition
-    edge_linetype = ifelse(weight > 0, "solid", "dotdash") # Solid for activation, dashed for inhibition
-  )
+grn_plot_function <- function(grn) {
+  graph <- as_tbl_graph(grn, directed = TRUE) %>%
+    activate(edges) %>%
+    mutate(
+      interaction_type = ifelse(weight > 0, "activator", "inhibitor"),  # Identify activation/inhibition
+      edge_color = ifelse(weight > 0, "green", "tomato"),   # Green for activation, red for inhibition
+      edge_linetype = ifelse(weight > 0, "solid", "dotdash") # Solid for activation, dashed for inhibition
+    )
 
-# these lines aren't doing anything just yet.  Need to figure out how to add two geom_edge_link()
-activator_arrow <- arrow(length = unit(3, 'mm'), type = "closed")  # Standard arrow
-inhibitor_arrow <- arrow(length = unit(3, 'mm'), type = "open", ends = "last")
+  # these lines aren't doing anything just yet.  Need to figure out how to add two geom_edge_link()
+  activator_arrow <- arrow(length = unit(3, 'mm'), type = "closed")  # Standard arrow
+  inhibitor_arrow <- arrow(length = unit(3, 'mm'), type = "open", ends = "last")
 
-# plot graph
-ggraph(graph, layout = 'linear', circular = TRUE) +
-  geom_edge_link(aes(color = edge_color, linetype = edge_linetype),
-                 arrow = arrow(length = unit(3, 'mm')),
-                 start_cap = circle(5, 'mm'),
-                 end_cap = circle(5, 'mm')
-                 ) +
-  geom_node_point(size = 9, color = "dodgerblue3") +
-  theme_graph(background = 'white') +
-  geom_node_text(aes(label = name), color = "white", size = 3) + 
-  scale_edge_linetype_identity() +
-  scale_edge_color_identity() + 
-  ggtitle("Expression and Inhibtion for 10 Gene In Silico Network")
+  # plot graph
+  ggraph(graph, layout = 'linear', circular = TRUE) +
+    geom_edge_link(aes(color = edge_color, linetype = edge_linetype),
+                   arrow = arrow(length = unit(3, 'mm')),
+                   start_cap = circle(5, 'mm'),
+                   end_cap = circle(5, 'mm')
+                   ) +
+    geom_node_point(size = 9, color = "dodgerblue3") +
+    theme_graph(background = 'white') +
+    geom_node_text(aes(label = name), color = "white", size = 3) + 
+    scale_edge_linetype_identity() +
+    scale_edge_color_identity()
+  }
+
+# plot single network
+grn_plot_function(time_lag_ord_lasso_net_10_genes)
+
+# plot sliced data and facet
+small_grn_plots <- lapply(adj_matrix_list, grn_plot_function)
+
+final_plot <- plot_grid(plotlist = small_grn_plots, ncol = 4, align = "hv", 
+                        rel_widths = rep(1, length(small_grn_plots)),  # Ensures equal width
+                        rel_heights = rep(1, length(small_grn_plots)))
+
+print(final_plot)
+
+ggsave("GRN_plots.png", final_plot, width = 12, height = 8, dpi = 300)

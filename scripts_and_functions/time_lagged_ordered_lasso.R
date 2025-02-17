@@ -143,7 +143,7 @@ full_10_gene_plot <- grn_plot_function(time_lag_ord_lasso_net_10_genes) +
   labs(title = "Gene Expression and Repression") + 
   theme(plot.title = element_text(color = "white"))
 
-ggsave(filename = "10_gene_grn_plot.png", plot = full_10_gene_plot, width = 6.5, height = 5)
+ggsave(path = "./visualizations", filename = "10_gene_grn_plot.png", plot = full_10_gene_plot, width = 6.5, height = 5)
 
 # plot sliced data and facet, needs work still the scale isn't correct
 small_grn_plots <- lapply(adj_matrix_list, grn_plot_function)
@@ -155,7 +155,7 @@ for (i in seq_along(small_grn_plots)) {
     labs(title = paste0("GRN Evolution ", index)) +  # Dynamically generate title
     theme(plot.title = element_text(color = "white"))
   
-  ggsave(filename = paste0("small_plot_", index, ".png"), plot = modified_plot, width = 6.5, height = 5, dpi = 300)
+  ggsave(path = "./visualizations", filename = paste0("small_plot_", index, ".png"), plot = modified_plot, width = 6.5, height = 5, dpi = 300)
   index <- index + 1
 }
 
@@ -168,4 +168,4 @@ final_plot <- plot_grid(plotlist = small_grn_plots, ncol = 4, align = "hv",
 
 print(final_plot)
 
-ggsave("GRN_plots.png", final_plot, width = 25, height = 12, dpi = 300)
+ggsave(path = "./visualizations", "all_grn_plots.png", final_plot, width = 25, height = 12, dpi = 300)

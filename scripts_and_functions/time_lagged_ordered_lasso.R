@@ -102,7 +102,6 @@ for (list in sliced_data_list) {
 }
 
 
-
 # Create Plots ------------------------------------------------------------
 
 
@@ -112,8 +111,8 @@ grn_plot_function <- function(grn) {
     activate(edges) %>%
     mutate(
       interaction_type = ifelse(weight > 0, "activator", "inhibitor"),  # Identify activation/inhibition
-      edge_color = ifelse(weight > 0, "green", "tomato"),   # Green for activation, red for inhibition
-      edge_linetype = ifelse(weight > 0, "solid", "dotdash") # Solid for activation, dashed for inhibition
+      edge_color = ifelse(weight > 0, "dodgerblue", "pink2"),   # Green for activation, red for inhibition
+      edge_linetype = ifelse(weight > 0, "solid", "solid") # Solid for activation, dashed for inhibition
     )
 
   # these lines aren't doing anything just yet.  Need to figure out how to add two geom_edge_link()
@@ -122,28 +121,51 @@ grn_plot_function <- function(grn) {
 
   # plot graph
   ggraph(graph, layout = 'linear', circular = TRUE) +
-    geom_edge_link(aes(color = edge_color, linetype = edge_linetype),
+    geom_edge_link(aes(color = interaction_type),
                    arrow = arrow(length = unit(3, 'mm')),
                    start_cap = circle(5, 'mm'),
                    end_cap = circle(5, 'mm')
                    ) +
-    geom_node_point(size = 9, color = "dodgerblue3") +
+    geom_node_point(size = 9, color = "yellow3") +
     theme_graph(background = 'white') +
-    geom_node_text(aes(label = name), color = "white", size = 3) + 
-    scale_edge_linetype_identity() +
-    scale_edge_color_identity()
+    geom_node_text(aes(label = name), color = "midnightblue", size = 3) + 
+    scale_edge_color_manual(
+      values = c("activator" = "dodgerblue", "inhibitor" = "pink2"),  # Assign colors properly
+      name = "Interaction Type"
+    ) +
+    theme_graph(background = "grey13") + 
+    theme(legend.text = element_text(color = "white"),
+          legend.title = element_text(color = "white"))
   }
 
 # plot single network
-grn_plot_function(time_lag_ord_lasso_net_10_genes)
+full_10_gene_plot <- grn_plot_function(time_lag_ord_lasso_net_10_genes) + 
+  labs(title = "Gene Expression and Repression") + 
+  theme(plot.title = element_text(color = "white"))
 
-# plot sliced data and facet
+ggsave(filename = "10_gene_grn_plot.png", plot = full_10_gene_plot, width = 6.5, height = 5)
+
+# plot sliced data and facet, needs work still the scale isn't correct
 small_grn_plots <- lapply(adj_matrix_list, grn_plot_function)
 
+# save small GRN plots individually
+index <- 1
+for (i in seq_along(small_grn_plots)) {
+  modified_plot <- small_grn_plots[[i]] + 
+    labs(title = paste0("GRN Evolution ", index)) +  # Dynamically generate title
+    theme(plot.title = element_text(color = "white"))
+  
+  ggsave(filename = paste0("small_plot_", index, ".png"), plot = modified_plot, width = 6.5, height = 5, dpi = 300)
+  index <- index + 1
+}
+
+
+# group all plots together on one chart
 final_plot <- plot_grid(plotlist = small_grn_plots, ncol = 4, align = "hv", 
-                        rel_widths = rep(1, length(small_grn_plots)),  # Ensures equal width
+                        rel_widths = rep(1, length(small_grn_plots)), 
                         rel_heights = rep(1, length(small_grn_plots)))
+  
 
 print(final_plot)
 
-ggsave("GRN_plots.png", final_plot, width = 12, height = 8, dpi = 300)
+ggsave("GRN_plots.png", final_plot, width = 25, height = 12, dpi = 300)

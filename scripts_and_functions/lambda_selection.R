@@ -9,7 +9,7 @@ library(glmnet)
 #' @param by amount of increase for each lambda as it advance to the max value
 #' @param num_folds number of folds for cross validation
 #' @return matrix of optimal lambdas for use in timeLaggedOrderedLassoNetwork
-cv_lambda_selection <- function(expr_data_list, min=0, max=10, by=0.1, num_folds=5){
+findOptimalLambdas <- function(expr_data_list, min=0, max=10, by=0.1, num_folds=5){
   possible_lambdas <- seq(min, max, by) # create possible lambdas
   
   p <- ncol(expr_data_list[[1]])  # find col dimensions for initial matrix and col/row dimensions for final matrix

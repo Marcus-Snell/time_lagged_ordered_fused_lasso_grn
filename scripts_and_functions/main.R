@@ -20,23 +20,31 @@ ts_50_genes <- loadTsData(file_extension = ".xls", file_path = "./data/dream2/Ne
 
 
 # Find optimal lamdas matrix
-opt_lambdas_10_genes <- cv_lambda_selection(ts_10_genes)
-opt_lambdas_50_genes <- cv_lambda_selection(ts_50_genes)
+opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes)
+opt_lambdas_50_genes <- findOptimalLambdas(ts_50_genes, num_folds = 10)
 
 # Creates predicted(inferred) GRN based on time series data of different gene expression levels
 time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, lambda = opt_lambdas_10_genes)
 time_lag_ord_lasso_net_50_genes <- timeLaggedOrderedLassoNetwork(ts_50_genes, lambda = opt_lambdas_50_genes)
 
+
 # Setup data for gene network evolution visualization. Creates a list of adjacency matrices that can be plotted
 adj_matrix_list <- list()
 sliced_ts_data_list <- sliceTsData(ts_10_genes, 10) # slice data
 
-# create adj matrices for each sliced dataset list and add to adj_matrix_list
-#TODO: Write a loop to find optimal lambdas for each sliced dataset
+# Create adj matrices for each sliced dataset list and add to adj_matrix_list
+opt_lambdas_list <- list()
+
+# Find optimal lambdas for time series slices
 for (list in sliced_ts_data_list) {
-  temp_adj <- timeLaggedOrderedLassoNetwork(list)
-  adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
-  
+  temp_lambda <- findOptimalLambdas(list)
+  opt_lambdas_list <- append(opt_lambdas_list, list(temp_lambda))
+}
+
+# Run time lagged ordered lasso on all slices with found optimal lambdas
+for (i in seq_along(sliced_ts_data_list)) {
+    temp_adj <- timeLaggedOrderedLassoNetwork(sliced_ts_data_list[[i]], lambda = opt_lambdas_list[[i]])
+    adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
 }
 
 

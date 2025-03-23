@@ -71,7 +71,7 @@
 #' @import parallel
 #' @return a list of coefficient matrices, with each matrix corresponding to a lag and ordered by increasing lag
 .timeLagLassoNetworkLaggedData <- function(xData, yData, maxLag, lambda,
-                                           self=TRUE, method='Solve.QP', strongly.ordered=FALSE,
+                                           self=TRUE, method='Solve.QP', strongly.ordered=TRUE,
                                            maxiter=500, inneriter=100, iter.gg=100,
                                            cores=1){
   
@@ -135,7 +135,7 @@
           coeffMatrix[,jj] <- coeffsByGene[[jj]]$beta[subsetIndex]
         }
       }
-      
+
       coeffMatrix
     })
   }
@@ -151,22 +151,47 @@
 #' @param maxLag maximum lag to use for network prediction, less than or equal to the regression model lag
 #' @param epsilon tolerance or threshold for edge prediction
 #' @return a predicted adjacency matrix
-.convertCoefficientsToAdjMatrix <- function(coeffMatricesByLag, maxLag=1, epsilon=1e-8){
+.convertCoefficientsToAdjMatrix <- function(coeffMatricesByLag, exprDataList, maxLag=1, epsilon=NULL){
   maxLag <- min(maxLag, length(coeffMatricesByLag))
   
-  #threshold absolute value of the coefficients
+  if (is.null(epsilon)) {
+    epsilon <- .findOptimalEpsilon(exprDataList)
+  }
+  
+  #threshold absolute value of the coefficients, creates true/false values (binary)
   adjByLag <- lapply(coeffMatricesByLag[1:maxLag], function(ii){
-    (ii > epsilon) - (ii < -epsilon)
+    abs(ii) > epsilon
   })
   
   #aggregate lags for each gene-pair
-  adjPredicted <- Reduce('+', adjByLag)
-  adjPredicted[adjPredicted > 1] <- 1    # Cap activations at 1
-  adjPredicted[adjPredicted < -1] <- -1  # Cap inhibitions at -1
-  
+  adjPredicted <- Reduce('+', adjByLag) > 0
   diag(adjPredicted) <- 0
   
   adjPredicted
+}
+
+####################
+####################
+
+#' @title .findOptimalEpsilon
+#' @description .findOptimalEpsilon
+#' @keywords internal
+#' @param exprDataList list of expression datasets (timepoints x genes) for p genes
+#' @return optimal epsilon for coefficient selection
+.findOptimalEpsilon <- function(exprDataList, quantileThreshold=0.75) {
+  rescaled_data <- .rescaleDataSeparate(exprDataList)  # scale data
+  lagged_data <- .transformListMultiLag(rescaled_data) # lag data
+  
+  lagged_expr_matrix <- lagged_data$xData # select combined lagged predictors
+  
+  pcor_matrix <- pcor(lagged_expr_matrix)$estimate # find partial correlation matrix
+ 
+  abs_pcor_values <- abs(pcor_matrix[upper.tri(pcor_matrix)])  # Ignore diagonal
+  epsilon_optimal <- quantile(abs_pcor_values, quantileThreshold)
+  
+  print(epsilon_optimal)
+  return(epsilon_optimal)
+
 }
 
 ####################
@@ -192,7 +217,7 @@
 #' @export
 timeLaggedOrderedLassoNetwork <- function(exprDataList,
                                           output='expr.', maxLag=2, lambda=1, self=TRUE,
-                                          method='Solve.QP', strongly.ordered=FALSE,
+                                          method='Solve.QP', strongly.ordered=TRUE,
                                           rescale=TRUE, rescaleSeparately=FALSE, 
                                           maxiter=500, inneriter=100, iter.gg=100,
                                           cores=1){
@@ -310,7 +335,7 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
   ##########
   
   #compute adj. matrix
-  .convertCoefficientsToAdjMatrix(coefficientsByLag, maxLag) #or replace maxLag with 1 because of the monotonicity constraint
+  .convertCoefficientsToAdjMatrix(coefficientsByLag, exprDataList, maxLag) #or replace maxLag with 1 because of the monotonicity constraint
   
 }
 

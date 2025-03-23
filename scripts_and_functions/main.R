@@ -1,4 +1,6 @@
 library(quadprog)
+library(ppcor)
+library(reshape2)
 
 source("./scripts_and_functions/dataPreprocessing.R")
 source("./scripts_and_functions/dataLagging.R")
@@ -7,14 +9,29 @@ source("./scripts_and_functions/timeLagLassoNetworkReconstruction.R")
 source("./scripts_and_functions/data_loading_slicing.R")
 source("./scripts_and_functions/lambda_selection.R")
 source("./scripts_and_functions/plot_functions.R")
-
+source("./scripts_and_functions/computeAUC.R")
 
 # Load Data ---------------------------------------------------------------
 
 
-ts_10_genes <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network1/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
+ts_10_genes <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network2/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
 ts_50_genes <- loadTsData(file_extension = ".xls", file_path = "./data/dream2/Network1/Time_series/InSilico1-trajectories.xls")
 
+# True network interactions
+ts_10_gold <- read.table("./data/dream3/InSilicoSize10/Network1/gold_copy/DREAM3GoldStandard_InSilicoSize10_Ecoli1.txt")
+
+ts_10_gold <-  ts_10_gold |> 
+  mutate(V1_numeric = as.numeric(gsub("G", "", V1))) |> 
+  arrange(V1_numeric) |> 
+  select(-V1_numeric)
+
+true_vals <- 
+  ts_10_gold |> 
+  select(V3) |> 
+  as.vector()
+
+true_vals <- c(true_vals[[1]])
+  
 
 # Time Lagged Lasso Network Reconstruction --------------------------------
 
@@ -24,7 +41,7 @@ opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes)
 opt_lambdas_50_genes <- findOptimalLambdas(ts_50_genes, num_folds = 10)
 
 # Creates predicted(inferred) GRN based on time series data of different gene expression levels
-time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, lambda = opt_lambdas_10_genes)
+time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, lambda = opt_lambdas_10_genes,  maxLag = 2)
 time_lag_ord_lasso_net_50_genes <- timeLaggedOrderedLassoNetwork(ts_50_genes, lambda = opt_lambdas_50_genes)
 
 

@@ -167,6 +167,7 @@
   adjPredicted <- Reduce('+', adjByLag) > 0
   diag(adjPredicted) <- 0
   
+ 
   adjPredicted
 }
 
@@ -335,8 +336,9 @@ timeLaggedOrderedLassoNetwork <- function(exprDataList,
   ##########
   
   #compute adj. matrix
-  .convertCoefficientsToAdjMatrix(coefficientsByLag, exprDataList, maxLag) #or replace maxLag with 1 because of the monotonicity constraint
-  
+  adjMatrix <- .convertCoefficientsToAdjMatrix(coefficientsByLag, exprDataList, maxLag)
+  attr(adjMatrix, "coefficientsByLag") <- coefficientsByLag
+  return(adjMatrix)
 }
 
 

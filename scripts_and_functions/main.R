@@ -1,6 +1,7 @@
 library(quadprog)
 library(ppcor)
 library(reshape2)
+library(patchwork)
 
 source("./scripts_and_functions/dataPreprocessing.R")
 source("./scripts_and_functions/dataLagging.R")
@@ -9,7 +10,7 @@ source("./scripts_and_functions/timeLagLassoNetworkReconstruction.R")
 source("./scripts_and_functions/data_loading_slicing.R")
 source("./scripts_and_functions/lambda_selection.R")
 source("./scripts_and_functions/plot_functions.R")
-source("./scripts_and_functions/computeAUC.R")
+source("./scripts_and_functions/computeROC.R")
 
 # Load Data ---------------------------------------------------------------
 
@@ -37,7 +38,7 @@ true_vals <- c(true_vals[[1]])
 
 
 # Find optimal lamdas matrix
-opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes)
+opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes, combine_data = FALSE)
 opt_lambdas_50_genes <- findOptimalLambdas(ts_50_genes, num_folds = 10)
 
 # Creates predicted(inferred) GRN based on time series data of different gene expression levels
@@ -64,6 +65,62 @@ for (i in seq_along(sliced_ts_data_list)) {
     adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
 }
 
+
+
+# Evaluation Metrics ------------------------------------------------------
+
+
+# Plot ROC, find AUC and plot 
+coeffs_by_lag <- attr(time_lag_ord_lasso_net_10_genes, "coefficientsByLag")
+roc_curve <- computeROC(true_vals, coeffs_by_lag)
+auc(roc_curve)
+plot(roc_curve)
+
+# Find ROC, AUC for all slices of time series
+roc_auc_list <- list()
+for (i in seq_along(adj_matrix_list)) {
+  coeffs_by_lag <- attr(adj_matrix_list[[i]], "coefficientsByLag")
+  roc_curve <- computeROC(true_vals, coeffs_by_lag)
+  auc_score <- auc(roc_curve)
+  roc_auc_list <- append(roc_auc_list, list(auc_score, roc_curve))
+}
+
+# plot ROCS for small time series
+roc_list <- roc_auc_list[seq(2, length(roc_auc_list), by = 2)]
+auc_only_list <- roc_auc_list[seq(1, length(roc_auc_list), by = 2)]
+
+roc_plot_list <- list()
+ts_num <- 1
+for (i in seq_along(roc_list)) {
+  roc <- roc_list[[i]]
+  auc_val <- auc_only_list[[i]] 
+  df <- coords(roc, "all", transpose = FALSE)
+  
+  x_pos <- max(1 - df$specificity, na.rm = TRUE) * 0.80
+  y_pos <- min(df$sensitivity, na.rm = TRUE) + 0.15
+  
+  roc_plot <- 
+    ggplot(df, aes(x = 1 - specificity, y = sensitivity)) +
+    geom_line(color = "blue", linewidth = 1) +
+    annotate("text", x = x_pos, y = y_pos, label = "AUC: ") +
+    annotate("text", x = x_pos + 0.1, y = y_pos, label = round(auc_val, 3), color = "red") + 
+    labs(x = "False Positive Rate",
+         y = "True Positive Rate",
+         caption = paste0("GRN Evolution ", ts_num))
+  
+  roc_plot_list <- append(roc_plot_list, list(roc_plot))
+  ts_num <- ts_num + 1
+}
+
+small_ts_roc <- wrap_plots(roc_plot_list, ncol = 3) +
+                plot_annotation(title = "GRN Evolution ROC Curves", 
+                                subtitle = "DREAM3 InSilico - 10 Gene Network",
+                theme = theme(plot.title = element_text(size = 18),
+                              plot.subtitle = element_text(size = 12),
+                              axis.title.x = element_text(size = 2, face = "bold"),
+                              axis.title.y = element_text(size = 2, face = "bold")))
+
+small_ts_roc
 
 # Visualize Gene Networks -------------------------------------------------
 

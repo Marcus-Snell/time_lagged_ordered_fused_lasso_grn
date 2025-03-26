@@ -16,7 +16,6 @@ source("./scripts_and_functions/computeROC.R")
 
 
 ts_10_genes <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network2/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
-ts_50_genes <- loadTsData(file_extension = ".xls", file_path = "./data/dream2/Network1/Time_series/InSilico1-trajectories.xls")
 
 # True network interactions
 ts_10_gold <- read.table("./data/dream3/InSilicoSize10/Network1/gold_copy/DREAM3GoldStandard_InSilicoSize10_Ecoli1.txt")
@@ -39,11 +38,12 @@ true_vals <- c(true_vals[[1]])
 
 # Find optimal lamdas matrix
 opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes, combine_data = FALSE)
-opt_lambdas_50_genes <- findOptimalLambdas(ts_50_genes, num_folds = 10)
 
 # Creates predicted(inferred) GRN based on time series data of different gene expression levels
-time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, lambda = opt_lambdas_10_genes,  maxLag = 2)
-time_lag_ord_lasso_net_50_genes <- timeLaggedOrderedLassoNetwork(ts_50_genes, lambda = opt_lambdas_50_genes)
+time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, 
+                                                                 lambda = opt_lambdas_10_genes,  
+                                                                 maxLag = 2
+                                                                 )
 
 
 # Setup data for gene network evolution visualization. Creates a list of adjacency matrices that can be plotted
@@ -64,7 +64,6 @@ for (i in seq_along(sliced_ts_data_list)) {
     temp_adj <- timeLaggedOrderedLassoNetwork(sliced_ts_data_list[[i]], lambda = opt_lambdas_list[[i]])
     adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
 }
-
 
 
 # Evaluation Metrics ------------------------------------------------------
@@ -112,7 +111,7 @@ for (i in seq_along(roc_list)) {
   ts_num <- ts_num + 1
 }
 
-small_ts_roc <- wrap_plots(roc_plot_list, ncol = 3) +
+small_ts_roc_plot <- wrap_plots(roc_plot_list, ncol = 3) +
                 plot_annotation(title = "GRN Evolution ROC Curves", 
                                 subtitle = "DREAM3 InSilico - 10 Gene Network",
                 theme = theme(plot.title = element_text(size = 18),
@@ -120,7 +119,7 @@ small_ts_roc <- wrap_plots(roc_plot_list, ncol = 3) +
                               axis.title.x = element_text(size = 2, face = "bold"),
                               axis.title.y = element_text(size = 2, face = "bold")))
 
-small_ts_roc
+ggsave(path = "./visualizations", filename = "small_ts_auc_scores.png", plot = small_ts_roc_plot, width = 14.5, height = 10)
 
 # Visualize Gene Networks -------------------------------------------------
 
@@ -131,12 +130,6 @@ full_10_gene_plot <- plotGrnDirectedGraph(time_lag_ord_lasso_net_10_genes) +
   theme(plot.title = element_text(color = "white", size = 13))
 
 ggsave(path = "./visualizations", filename = "10_gene_grn_plot.png", plot = full_10_gene_plot, width = 6.5, height = 5)
-
-full_50_gene_plot <- plotGrnDirectedGraph(time_lag_ord_lasso_net_50_genes) + 
-  labs(title = "Gene Expression and Repression - 50 Gene Network") + 
-  theme(plot.title = element_text(color = "white", size = 25))
-
-ggsave(path = "./visualizations", filename = "50_gene_grn_plot.png", plot = full_50_gene_plot, width = 11.5, height = 10)
 
 # Plot individual networks from sliced data and save (allows visualization of Gene Network Evolution)
 small_grn_plots <- lapply(adj_matrix_list, plotGrnDirectedGraph)

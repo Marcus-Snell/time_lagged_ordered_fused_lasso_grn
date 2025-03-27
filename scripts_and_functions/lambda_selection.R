@@ -33,7 +33,6 @@ findOptimalLambdas <- function(expr_data_list, min=0, max=10, by=0.1, num_folds=
     
     # Create a matrix where each optimal lambda fills its entire column
     optimal_lambdas_matrix <- matrix(rep(optimal_lambdas_vector, each = p), nrow = p, ncol = p)
-    print(optimal_lambdas_matrix)
     
   } else {
   

@@ -11,67 +11,114 @@ source("./scripts_and_functions/data_loading_slicing.R")
 source("./scripts_and_functions/lambda_selection.R")
 source("./scripts_and_functions/plot_functions.R")
 source("./scripts_and_functions/computeROC.R")
+source("./scripts_and_functions/convertGoldData.R")
+
 
 # Load Data ---------------------------------------------------------------
 
 
-ts_10_genes <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network2/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
+# gene expression time series
+ecoli1_ts <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network1/Time_Series/InSilicoSize10-Ecoli1-trajectories.tsv")
+ecoli2_ts <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network2/Time_Series/InSilicoSize10-Ecoli2-trajectories.tsv")
+
+yeast1_ts <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network3/Time_Series/InSilicoSize10-Yeast1-trajectories.tsv")
+yeast2_ts <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network4/Time_Series/InSilicoSize10-Yeast2-trajectories.tsv")
+yeast3_ts <- loadTsData(file_extension = ".tsv", file_path = "./data/dream3/InSilicoSize10/Network5/Time_Series/InSilicoSize10-Yeast3-trajectories.tsv")
+
 
 # True network interactions
-ts_10_gold <- read.table("./data/dream3/InSilicoSize10/Network1/gold_copy/DREAM3GoldStandard_InSilicoSize10_Ecoli1.txt")
+ecoli1_gold <- read.table("./data/dream3/InSilicoSize10/Network1/gold_copy/DREAM3GoldStandard_InSilicoSize10_Ecoli1.txt")
+ecoli1_partial_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network1/InSilicoSize10-Ecoli1-heterozygous.tsv")
+ecoli1_full_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network1/InSilicoSize10-Ecoli1-null-mutants.tsv")
 
-ts_10_gold <-  ts_10_gold |> 
-  mutate(V1_numeric = as.numeric(gsub("G", "", V1))) |> 
-  arrange(V1_numeric) |> 
-  select(-V1_numeric)
+ecoli1_adj <- convertGoldData(ecoli1_gold, ecoli1_partial_knockdown, ecoli1_full_knockdown)
+ecoli1_true_vals <- as.vector(ecoli1_adj)
 
-true_vals <- 
-  ts_10_gold |> 
-  select(V3) |> 
-  as.vector()
+ecoli2_gold <- read.table("./data/dream3/InSilicoSize10/Network2/gold_copy/DREAM3GoldStandard_InSilicoSize10_Ecoli2.txt")
+ecoli2_partial_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network2/InSilicoSize10-Ecoli2-heterozygous.tsv")
+ecoli2_full_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network2/InSilicoSize10-Ecoli2-null-mutants.tsv")
 
-true_vals <- c(true_vals[[1]])
+ecoli2_adj <- convertGoldData(ecoli2_gold, ecoli2_partial_knockdown, ecoli2_full_knockdown)
+ecoli2_true_vals <- as.vector(ecoli2_adj)
+
+
+yeast1_gold <- read.table("./data/dream3/InSilicoSize10/Network3/gold_copy/DREAM3GoldStandard_InSilicoSize10_Yeast1.txt")
+yeast1_partial_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network3/InSilicoSize10-Yeast1-heterozygous.tsv")
+yeast1_full_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network3/InSilicoSize10-Yeast1-null-mutants.tsv")
+
+yeast1_adj <- convertGoldData(yeast1_gold, yeast1_partial_knockdown, yeast1_full_knockdown)
+yeast1_true_vals <- as.vector(yeast1_adj)
+
+yeast2_gold <- read.table("./data/dream3/InSilicoSize10/Network4/gold_copy/DREAM3GoldStandard_InSilicoSize10_Yeast2.txt")
+yeast2_partial_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network4/InSilicoSize10-Yeast2-heterozygous.tsv")
+yeast2_full_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network4/InSilicoSize10-Yeast2-null-mutants.tsv")
+
+yeast2_adj <- convertGoldData(yeast2_gold, yeast2_partial_knockdown, yeast2_full_knockdown)
+yeast2_true_vals <- as.vector(yeast2_adj)
+
+yeast3_gold <- read.table("./data/dream3/InSilicoSize10/Network5/gold_copy/DREAM3GoldStandard_InSilicoSize10_Yeast3.txt")
+yeast3_partial_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network5/InSilicoSize10-Yeast3-heterozygous.tsv")
+yeast3_full_knockdown <- read_tsv("./data/dream3/InSilicoSize10/Network5/InSilicoSize10-Yeast3-null-mutants.tsv")
+
+yeast3_adj <- convertGoldData(yeast3_gold, yeast3_partial_knockdown, yeast3_full_knockdown)
+yeast3_true_vals <- as.vector(yeast3_adj)
   
 
 # Time Lagged Lasso Network Reconstruction --------------------------------
 
 
 # Find optimal lamdas matrix
-opt_lambdas_10_genes <- findOptimalLambdas(ts_10_genes, combine_data = FALSE)
+ecoli1_opt_lambdas <- findOptimalLambdas(ecoli1_ts, combine_data = FALSE)
+ecoli2_opt_lambdas <- findOptimalLambdas(ecoli1_ts, combine_data = FALSE)
+
+yeast1_opt_lambdas <- findOptimalLambdas(yeast1_ts, combine_data = FALSE)
+yeast2_opt_lambdas <- findOptimalLambdas(yeast2_ts, combine_data = FALSE)
+yeast3_opt_lambdas <- findOptimalLambdas(yeast2_ts, combine_data = FALSE)
+
 
 # Creates predicted(inferred) GRN based on time series data of different gene expression levels
-time_lag_ord_lasso_net_10_genes <- timeLaggedOrderedLassoNetwork(ts_10_genes, 
-                                                                 lambda = opt_lambdas_10_genes,  
-                                                                 maxLag = 2
-                                                                 )
+ecoli1_grn <- timeLaggedOrderedLassoNetwork(ecoli1_ts, lambda = ecoli1_opt_lambdas, maxLag = 1)
+ecoli2_grn <- timeLaggedOrderedLassoNetwork(ecoli2_ts, lambda = ecoli2_opt_lambdas, maxLag = 1)
+
+yeast1_grn <- timeLaggedOrderedLassoNetwork(yeast1_ts, lambda = yeast1_opt_lambdas, maxLag = 1)
+yeast2_grn <- timeLaggedOrderedLassoNetwork(yeast2_ts, lambda = yeast2_opt_lambdas, maxLag = 1)
+yeast3_grn <- timeLaggedOrderedLassoNetwork(yeast3_ts, lambda = yeast3_opt_lambdas, maxLag = 1)
 
 
-# Setup data for gene network evolution visualization. Creates a list of adjacency matrices that can be plotted
-adj_matrix_list <- list()
-sliced_ts_data_list <- sliceTsData(ts_10_genes, 10) # slice data
+# Run gene network evolution. Creates a list of adjacency matrices that can be plotted
+grnEvolution <- function(timeSeries) {
+  adj_matrix_list <- list()
+  opt_lambdas_list <- list()
+  sliced_ts_data_list <- sliceTsData(timeSeries, 10) # slice data
 
-# Create adj matrices for each sliced dataset list and add to adj_matrix_list
-opt_lambdas_list <- list()
+  # Find optimal lambdas for time series slices
+  for (ts_slice in sliced_ts_data_list) {
+    temp_lambda <- findOptimalLambdas(ts_slice)
+    opt_lambdas_list <- append(opt_lambdas_list, list(temp_lambda))
+  }
 
-# Find optimal lambdas for time series slices
-for (list in sliced_ts_data_list) {
-  temp_lambda <- findOptimalLambdas(list)
-  opt_lambdas_list <- append(opt_lambdas_list, list(temp_lambda))
+  # Run time lagged ordered lasso on all slices with found optimal lambdas
+  for (i in seq_along(sliced_ts_data_list)) {
+      temp_adj <- timeLaggedOrderedLassoNetwork(sliced_ts_data_list[[i]], lambda = opt_lambdas_list[[i]])
+      adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
+  }
+  return(adj_matrix_list)
 }
 
-# Run time lagged ordered lasso on all slices with found optimal lambdas
-for (i in seq_along(sliced_ts_data_list)) {
-    temp_adj <- timeLaggedOrderedLassoNetwork(sliced_ts_data_list[[i]], lambda = opt_lambdas_list[[i]])
-    adj_matrix_list <- append(adj_matrix_list, list(temp_adj))
-}
+ecoli1_adj_list <- grnEvolution(ecoli1_ts)
+ecoli2_adj_list <- grnEvolution(ecoli2_ts)
+
+yeast1_adj_list <- grnEvolution(yeast1_ts)
+yeast2_adj_list <- grnEvolution(yeast2_ts)
+yeast3_adj_list <- grnEvolution(yeast3_ts)
 
 
 # Evaluation Metrics ------------------------------------------------------
 
 
 # Plot ROC, find AUC and plot 
-coeffs_by_lag <- attr(time_lag_ord_lasso_net_10_genes, "coefficientsByLag")
-roc_curve <- computeROC(true_vals, coeffs_by_lag)
+coeffs_by_lag <- attr(yeast3_grn, "coefficientsByLag")
+roc_curve <- computeROC(yeast3_true_vals, coeffs_by_lag)
 auc(roc_curve)
 plot(roc_curve)
 

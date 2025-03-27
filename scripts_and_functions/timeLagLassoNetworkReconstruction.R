@@ -190,7 +190,6 @@
   abs_pcor_values <- abs(pcor_matrix[upper.tri(pcor_matrix)])  # Ignore diagonal
   epsilon_optimal <- quantile(abs_pcor_values, quantileThreshold)
   
-  print(epsilon_optimal)
   return(epsilon_optimal)
 
 }

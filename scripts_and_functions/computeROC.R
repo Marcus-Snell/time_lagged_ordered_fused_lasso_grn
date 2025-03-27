@@ -11,7 +11,7 @@ computeROC <- function(goldData = NULL, coeffMatrixByLag = NULL) {
   combined_coeff_matrix <- Reduce('+', coeffMatrixByLag)
   removed_diagonal <- combined_coeff_matrix[!diag(TRUE, p)]
   predicted_connections <- as.vector(removed_diagonal)
-  true_connections <- goldData
+  true_connections <- goldData[!diag(TRUE, p)]
   
   roc_curve <- roc(true_connections, predicted_connections)
   

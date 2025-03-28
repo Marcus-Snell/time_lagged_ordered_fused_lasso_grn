@@ -105,15 +105,67 @@ grnEvolution <- function(timeSeries) {
   return(adj_matrix_list)
 }
 
-ecoli1_adj_list <- grnEvolution(ecoli1_ts)
-ecoli2_adj_list <- grnEvolution(ecoli2_ts)
+ecoli1_tmslce_adj_list <- grnEvolution(ecoli1_ts)
+ecoli2_tmslce_adj_list <- grnEvolution(ecoli2_ts)
 
-yeast1_adj_list <- grnEvolution(yeast1_ts)
-yeast2_adj_list <- grnEvolution(yeast2_ts)
-yeast3_adj_list <- grnEvolution(yeast3_ts)
+yeast1_tmslce_adj_list <- grnEvolution(yeast1_ts)
+yeast2_tmslce_adj_list <- grnEvolution(yeast2_ts)
+yeast3_tmslce_adj_list <- grnEvolution(yeast3_ts)
+
+
+# Slight hyper parameter tuning: lambda and maxlag
+lambda_list <- list(1, 2, 3, 4, 5, 6, 7, 8)
+max_lag_list <- list(1,2, 3, 4, 5, 6, 7, 8)
+
+#' @param tsData time series data already read in (ex. ecoli1_ts)
+#' @param goldVector vector of true connections (ex. ecoli1_true_vals)
+#' @return a dataframe of lags, lambdas, and auc scores
+iterateMaxLagLambda <- function(tsData, goldVector) {
+  df_lag_column <- c()
+  df_lambda_column <- c()
+  df_auc_column <- c()
+  for (i in 1:8) {
+    for (j in 1:8) {
+      max_lag <- max_lag_list[[j]]
+      lambda <- lambda_list[[i]]
+      
+      grn <- timeLaggedOrderedLassoNetwork(tsData, maxLag = max_lag, lambda = lambda)
+      
+      coeffs_by_lag <- attr(grn, "coefficientsByLag")
+      roc_curve <- computeROC(goldVector, coeffs_by_lag)
+      grn_auc <- auc(roc_curve)
+      
+      df_lag_column <- append(df_lag_column, max_lag)
+      df_lambda_column <- append(df_lambda_column, lambda)
+      df_auc_column <- append(df_auc_column, grn_auc)
+    }
+  }
+  
+  lagLambdaAuc_df <- data.frame(max_lag = df_lag_column,
+                             lambda = df_lambda_column,
+                             auc = df_auc_column)
+  
+  return(lagLambdaAuc_df)
+} 
+
+ecoli1_results_df <- iterateMaxLagLambda(ecoli1_ts, ecoli1_true_vals)
+ecoli2_results_df <- iterateMaxLagLambda(ecoli2_ts, ecoli2_true_vals)
+
+yeast1_results_df <- iterateMaxLagLambda(yeast1_ts, yeast1_true_vals)
+yeast2_results_df <- iterateMaxLagLambda(yeast2_ts, yeast2_true_vals)
+yeast3_results_df <- iterateMaxLagLambda(yeast3_ts, yeast3_true_vals)
 
 
 # Evaluation Metrics ------------------------------------------------------
+
+
+# Plot varying lambda, lags and corresponding AUC scores
+plotaucLambdaLagComparison(ecoli1_results_df, "Ecoli1")
+plotaucLambdaLagComparison(ecoli2_results_df, "Ecoli2")
+
+plotaucLambdaLagComparison(yeast1_results_df, "Yeast1")
+plotaucLambdaLagComparison(yeast2_results_df, "Yeast2")
+plotaucLambdaLagComparison(yeast3_results_df, "Yeast3")
 
 
 # Plot ROC, find AUC and plot 

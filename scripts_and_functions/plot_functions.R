@@ -2,6 +2,7 @@ library(ggplot2)
 library(ggraph)
 library(tidygraph)
 library(cowplot)
+library(ggdark)
 
 ####################
 ####################
@@ -39,4 +40,27 @@ plotGrnDirectedGraph <- function(grn) {
     theme_graph(background = "grey13") + 
     theme(legend.text = element_text(color = "white"),
           legend.title = element_text(color = "white"))
+}
+
+####################
+####################
+#' @title plotaucLambdaLagComparison
+#' @description plots directed graph using timeLaggedOrderedLassoNetwork() output 
+#' @param grnResultsDF a dataframe of different AUC scores run on different lambda, and lag values
+#' @param networkName a string value of the name of the network plotted (ex. "Ecoli1")
+#' @return ggplot chart of individual lambdas and their respective scores at each lag value
+plotaucLambdaLagComparison <- function(grnResultsDF, networkName){
+  grnResultsDF |>
+  ggplot(aes(x = max_lag, y = auc, color = as.factor(lambda), group = lambda)) + 
+    geom_line() + 
+    geom_point() +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(color = "Lambda",
+         title = "Model Performance Comparison by Varying Max Lag and Lambda",
+         subtitle = paste0("Network: ", networkName)) +
+    dark_theme_light() +
+    theme(plot.title = element_text(size = 22),
+          plot.subtitle = element_text(size = 18),
+          legend.position = "bottom") +
+    guides(color = guide_legend(nrow = 1))
 }
